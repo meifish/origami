@@ -30,6 +30,7 @@ function App() {
   const [processingError, setProcessingError] = useState('')
   const [tool, setTool] = useState<Tool>('select')
   const [selected, setSelected] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
   const [startAnchored, setStartAnchored] = useState(false)
   const [draft, setDraft] = useState<Mark | null>(null)
   const [progress, setProgress] = useState<number | null>(null)
@@ -154,12 +155,16 @@ function App() {
     tween.current = null
     setProgress(null)
   }
+  function selectMark(id: string | null) {
+    if (id !== selected || id === null) setEditing(false)
+    setSelected(id)
+  }
   function choose(next: Tool) {
     gesture.current = null
     setDraft(null)
     setStartAnchored(false)
     setTool(next)
-    if (next !== 'select') setSelected(null)
+    if (next !== 'select') selectMark(null)
   }
   function update(id: string, patch: Partial<Mark>) {
     setProject(previous => ({ ...previous, marks: previous.marks.map(mark =>
@@ -168,14 +173,14 @@ function App() {
   }
   function remove() {
     setProject(previous => ({ ...previous, marks: previous.marks.filter(mark => mark.id !== selected) }))
-    setSelected(null)
+    selectMark(null)
   }
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         stop()
         choose('select')
-        setSelected(null)
+        selectMark(null)
         return
       }
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
@@ -209,7 +214,7 @@ function App() {
       setRenderedPaper(null)
       setShowOriginal(false)
       setProject(next)
-      setSelected(null)
+      selectMark(null)
       choose('select')
       setNotice(next.photo ? `Opened ${next.photo.name}` : 'Project opened')
     } catch (problem) {
@@ -249,7 +254,7 @@ function App() {
   function begin(event: Konva.KonvaEventObject<PointerEvent>) {
     if (previewing || busy || event.evt.button !== 0) return
     if (tool === 'select') {
-      if (event.target === stage.current) setSelected(null)
+      if (event.target === stage.current) selectMark(null)
       return
     }
     const start = pointer()
@@ -285,7 +290,7 @@ function App() {
     choose('select')
     const mark = { ...current, end, control: defaultControl(current.start, end, width, height) }
     setProject(previous => ({ ...previous, marks: [...previous.marks, mark] }))
-    setSelected(mark.id)
+    selectMark(mark.id)
   }
   function play() {
     const state = { value: 0 }
@@ -326,7 +331,7 @@ function App() {
       strokeWidth: mark.width * unit, hitStrokeWidth: 14,
       lineCap: 'round' as const, lineJoin: 'round' as const,
       listening: tool === 'select' && !previewing,
-      onPointerDown: () => { if (!busy) setSelected(mark.id) },
+      onPointerDown: () => { if (!busy) selectMark(mark.id) },
     }
     if (mark.kind !== 'arrow') return <Line {...common} key={mark.id}
       points={[mark.start.x * width, mark.start.y * height, mark.end.x * width, mark.end.y * height]}
@@ -512,15 +517,25 @@ function App() {
           </fieldset>}
           <div className="layer-list">
             {[...stackedMarks].reverse().map(({ mark, number }) => <div className="layer-row" key={mark.id}>
-              <button className="layer-name" aria-pressed={selected === mark.id} disabled={busy || previewing} onClick={() => { choose('select'); setSelected(mark.id) }}>
+              <button className="layer-name" aria-pressed={selected === mark.id} disabled={busy || previewing} onClick={() => { choose('select'); selectMark(mark.id) }}>
                 <span>{icons[mark.kind]}</span>{labels[mark.kind]} {number}
               </button>
-              <button className="visibility" aria-label={`${mark.hidden ? 'Show' : 'Hide'} ${labels[mark.kind]} ${number}`}
-                disabled={busy || previewing} onClick={() => update(mark.id, { hidden: !mark.hidden })}>{mark.hidden ? '○' : '◉'}</button>
+              <button className="edit-mark" aria-label={`Edit ${labels[mark.kind]} ${number}`}
+                aria-expanded={editing && selected === mark.id} aria-controls="annotation-style"
+                title="Edit annotation" disabled={busy || previewing} onClick={() => {
+                  choose('select')
+                  selectMark(mark.id)
+                  setEditing(!(editing && selected === mark.id))
+                }}>
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m14 6 4 4M4 20l4-1 12-12a2.83 2.83 0 0 0-4-4L4 15l-1 5z" />
+                </svg>
+              </button>
             </div>)}
           </div>
-          <div className="section-title style-title">STYLE</div>
-          {active ? <fieldset disabled={busy || previewing}>
+          {active && editing && <fieldset id="annotation-style" className="style-title" disabled={busy || previewing}>
+            <div className="section-title">STYLE</div>
             {active.kind === 'arrow' && <label>Arrow style
               <select value={active.arrowStyle ?? 'single'} onChange={event => update(active.id, { arrowStyle: event.target.value as ArrowStyle })}>
                 {Object.entries(arrowStyles).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -538,8 +553,10 @@ function App() {
               onChange={event => update(active.id, { width: +event.target.value })} /></label>
             <label>Opacity <output>{Math.round(active.opacity * 100)}%</output><input type="range" min="0.1" max="1" step="0.01" value={active.opacity}
               onChange={event => update(active.id, { opacity: +event.target.value })} /></label>
+            <label className="annotation-visibility"><input type="checkbox" checked={!active.hidden}
+              onChange={event => update(active.id, { hidden: !event.target.checked })} /> Visible on canvas</label>
             <button className="danger" onClick={remove}>Delete annotation</button>
-          </fieldset> : <p className="muted">Select an annotation to edit its appearance.</p>}
+          </fieldset>}
         </aside>
       </div>
       <footer><span>ORIGAMI STUDIO / DIAGRAM EDITOR</span><span role="status">{notice}</span>{error && <span role="alert">{error}</span>}<span>LOCAL WORKSPACE</span></footer>

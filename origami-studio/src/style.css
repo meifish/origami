@@ -76,3 +76,7 @@ footer [role=alert]{color:#923b2b}
 
 .crop-actions{display:flex;flex-wrap:wrap;gap:6px}
 .crop-actions:not(:empty){margin-top:8px}
+
+.edit-mark{display:grid;place-items:center}
+.edit-mark[aria-expanded=true]{background:#e2eee4;border-color:#8ba898}
+.annotation-visibility{display:flex;align-items:center;gap:5px}
