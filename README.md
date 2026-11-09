@@ -21,3 +21,7 @@ locally. The mask estimates the outline from the cool paper against the warm
 background in this photo series. Use the mask overlay to review alignment for
 other photos. The stylizations reuse the same alpha channel. Quantization
 can produce visible tonal bands, so review folds against the original cutout.
+
+## Origami Studio editor
+
+The browser editor is in [origami-studio](origami-studio/README.md).

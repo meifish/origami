@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" width="960" height="720">
+  <defs>
+    <linearGradient id="table" x2="1" y2="1"><stop stop-color="#e6e3d7"/><stop offset="1" stop-color="#c6c9bc"/></linearGradient>
+    <linearGradient id="paper" x2="1" y2="1"><stop stop-color="#9aafa0"/><stop offset="1" stop-color="#577969"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="5" dy="16" stdDeviation="16" flood-color="#233e32" flood-opacity=".26"/></filter>
+    <pattern id="grain" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".45" fill="#fff" opacity=".32"/></pattern>
+  </defs>
+  <path d="M0 0h960v720H0z" fill="url(#table)"/>
+  <path d="M0 0h960v720H0z" fill="url(#grain)"/>
+  <g filter="url(#shadow)">
+    <path d="M480 75 765 360 480 645 195 360Z" fill="url(#paper)"/>
+    <path d="M480 75 480 360 195 360Z" fill="#b0c3aa"/>
+    <path d="M480 75 765 360 480 360Z" fill="#90aa97"/>
+    <path d="M195 360 480 360 480 645Z" fill="#789788"/>
+    <path d="M480 360 765 360 480 645Z" fill="#587d6d"/>
+    <path d="M480 75 765 360 480 645 195 360Z" fill="url(#grain)"/>
+    <path d="M195 360H765M480 75V645" stroke="#edf1e5" opacity=".27"/>
+  </g>
+  <text x="35" y="668" fill="#304638" font-family="monospace" font-size="14" letter-spacing="3">STUDY 01 / PAPER BASE</text>
+</svg>
