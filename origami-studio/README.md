@@ -46,3 +46,7 @@ Choose **Soft Editorial**, **Textured Illustration**, or **Graphic Paper Art** t
 After background removal, set **Crop margin** and click **Crop to paper**. The margin defaults to 3% of the shorter paper dimension, and is limited by the original photo edges. Set it to 0% for a tight crop. **Reset crop** restores the full frame. The crop is stored in JSON and applied to the exported PNG. Annotation coordinates stay aligned with the source photo.
 
 Run the paper processing test independently with `node --test tests/paper.test.mjs`.
+
+## Completed frames
+
+Choose **Done** below the canvas to capture a thumbnail and keep an editable copy of the current frame in the thumbnail strip. The canvas clears after saving so you can start the next frame. Choose **Edit** on a thumbnail to load its photo, crop, style, and annotations into the canvas. Choose **Done editing frame** to replace that thumbnail and its saved canvas state, then clear the canvas again. Save any unfinished canvas work before opening another frame. The frame strip lasts until the page is closed or reloaded. **Save JSON** saves the current canvas.

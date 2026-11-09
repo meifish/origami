@@ -18,8 +18,17 @@ const icons = { select: '↖', valley: '┄', mountain: '╍', crease: '╱', ar
 const colors = ['#ffffff', '#253431', '#ce5c42', '#e8ba50', '#497e72']
 const artwork = new URL('./sample.svg', import.meta.url).href
 
+type CompletedFrame = {
+  id: string
+  project: Project
+  thumbnail: string
+  showOriginal: boolean
+}
+
 function App() {
   const [project, setProject] = useState<Project>(blank)
+  const [completed, setCompleted] = useState<CompletedFrame[]>([])
+  const [editingFrame, setEditingFrame] = useState<string | null>(null)
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null)
   const [renderedPaper, setRenderedPaper] = useState<{
     settings: PaperSettings
@@ -197,7 +206,7 @@ function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [selected, previewing, busy])
 
-  async function load(action: () => Promise<Project>) {
+  async function load(action: () => Promise<Project>, savedFrame?: CompletedFrame) {
     setBusy(true)
     setError('')
     setNotice('')
@@ -212,7 +221,8 @@ function App() {
       }
       setPhoto(image)
       setRenderedPaper(null)
-      setShowOriginal(false)
+      setShowOriginal(savedFrame?.showOriginal ?? false)
+      setEditingFrame(savedFrame?.id ?? null)
       setProject(next)
       selectMark(null)
       choose('select')
@@ -305,22 +315,48 @@ function App() {
     download(new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' }), 'origami.project.json')
     setNotice('Project downloaded')
   }
-  async function exportPng() {
-    if (!stage.current || !guides.current) return
+  function captureCanvas(pixelRatio: number) {
     const layer = guides.current
+    const currentStage = stage.current
+    if (!layer || !currentStage) throw new Error('Canvas is unavailable.')
+    layer.hide()
+    try {
+      return currentStage.toCanvas({ pixelRatio })
+    } finally {
+      layer.show()
+    }
+  }
+  function completeFrame() {
     setError('')
     try {
-      layer.hide()
-      const canvas = stage.current.toCanvas({ pixelRatio: photo ? (frame.width + 1e-7) / viewWidth : 2 })
-      layer.show()
+      const thumbnail = captureCanvas(240 / Math.max(viewWidth, viewHeight)).toDataURL('image/png')
+      if (thumbnail === 'data:,') throw new Error('Thumbnail is empty.')
+      const snapshot = { id: editingFrame ?? crypto.randomUUID(), project, thumbnail, showOriginal }
+      setCompleted(previous => editingFrame
+        ? previous.map(item => item.id === editingFrame ? snapshot : item)
+        : [...previous, snapshot])
+      setProject(blank)
+      setPhoto(null)
+      setRenderedPaper(null)
+      setShowOriginal(false)
+      selectMark(null)
+      choose('select')
+      setEditingFrame(null)
+      setNotice(editingFrame ? 'Frame updated. Ready for the next frame.' : 'Frame added. Ready for the next frame.')
+    } catch {
+      setError('Could not create the frame thumbnail.')
+    }
+  }
+  async function exportPng() {
+    setError('')
+    try {
+      const canvas = captureCanvas(photo ? (frame.width + 1e-7) / viewWidth : 2)
       const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(result =>
         result ? resolve(result) : reject(new Error('Could not encode this canvas.')), 'image/png'))
       download(blob, 'origami.png')
       setNotice('PNG downloaded')
     } catch {
       setError('PNG export failed. The image may exceed your browser’s canvas size limit.')
-    } finally {
-      layer.show()
     }
   }
   function renderMark(mark: Mark) {
@@ -382,6 +418,7 @@ function App() {
       context.strokeShape(shape)
     }} />
   }
+  const capturingDisabled = previewing || busy || !!draft || (!showOriginal && (processing || !!processingError))
   const handleKeys = active?.kind === 'arrow' ? ['start', 'control', 'end'] as const : ['start', 'end'] as const
 
   return <>
@@ -390,7 +427,7 @@ function App() {
       <div className="actions">
         <button disabled={busy} onClick={() => jsonInput.current?.click()}>Open project</button>
         <button disabled={busy} onClick={save}>Save JSON</button>
-        <button className="primary" disabled={previewing || busy || !!draft || (!showOriginal && (processing || !!processingError))} onClick={exportPng}>Export PNG ↗</button>
+        <button className="primary" disabled={capturingDisabled} onClick={exportPng}>Export PNG ↗</button>
       </div>
       <input ref={jsonInput} type="file" accept=".json,application/json" hidden onChange={event => {
         const file = event.target.files?.[0]
@@ -475,7 +512,21 @@ function App() {
             <button className="preview" disabled={busy || !!draft || !project.marks.some(mark => !mark.hidden)}
               onClick={previewing ? stop : play}>{previewing ? '■  Stop preview' : '▶  Preview animation'}</button>
             <span>{previewing ? 'Playing preview…' : tool !== 'select' ? (startAnchored ? 'Click the end point' : 'Click the start point') : `${project.marks.length} annotation${project.marks.length === 1 ? '' : 's'}`}</span>
+            <button className="primary" disabled={capturingDisabled || (!photo && !project.marks.length)}
+              onClick={completeFrame}>{editingFrame ? 'Done editing frame' : 'Done'}</button>
           </div>
+          {completed.length > 0 && <section className="frames" aria-label="Completed frames">
+            <h2 className="section-title">COMPLETED FRAMES</h2>
+            <ol>
+              {completed.map((item, index) => <li key={item.id} className={editingFrame === item.id ? 'editing-frame' : undefined}>
+                <img src={item.thumbnail} alt={`Thumbnail of frame ${index + 1}`} />
+                <div><span>Frame {index + 1}</span>
+                  <button aria-label={`Edit frame ${index + 1}`} disabled={busy || previewing || editingFrame === item.id}
+                    onClick={() => void load(async () => item.project, item)}>Edit</button>
+                </div>
+              </li>)}
+            </ol>
+          </section>}
         </section>
         <aside className="inspector">
           <div className="section-title">LAYERS</div>
